@@ -1,4 +1,4 @@
-<external_define name="max_step" value="2000"/>
+<external_define name="max_step" value="1"/>
 <external_define name="step_size" value="1.e-11"/>
 <external_define name="seed_number" value="48184"/>
 <external_define name="number_events" value="1"/>
@@ -8,7 +8,7 @@
 <define name="log_path" value="IronSteerer/Logs"/>
 <define name="file_name" value="IronSteerer_sim_Output"/>
 <messages>
-    <file path="[log_path]" base="IntegratedSArray_NewGeometryLog.txt"/>
+    <file path="[log_path]" base="IronSteerer_NewGeometryLog.txt"/>
 
 	<message key="k_file" terminal="normal" log="debug"/>
 	<message key="k_initialization" terminal="normal" log="debug"/>
@@ -37,19 +37,64 @@
 </messages>
 
 <geometry>
-    <!--Make Later-->
     <!--World Space-->
     <cylinder_space name="world_space" z1="-10." z2="10." r="5."/>
+
+    <!--Magnetic Steerer Tag-->
+    <tag name="Magnetic_Steerer_tag">
+        <cylinder_surface 
+        name="Magnetic_Steerer" 
+        z1="-0.1" z2="0.1" r="0.127" 
+        longitudinal_mesh_count="15" 
+        longitudinal_mesh_power="2." 
+        axial_mesh_count="32"
+        />
+    </tag>
+
+    <!--Assembly-->
+    <space name="IronSteerer_assembly">
+        <surface name="Magnetic_Steerer" node="Magnetic_Steerer"/>
+    </space>
+
+    <space name="world" node="world_space">
+        <space name="IronSteerer" tree="IronSteerer_assembly"/>
+    </space>
+
+    <!--Defining the Current-->
+    <electromagnet name="Magnetic_Steerer" surfaces="world/IronSteerer/Magnetic_Steerer" current="2573"/>
 </geometry>
 
 <kemfield>
-    <!--Make Later-->
-
+    <!--Creating the Magnetic Field-->
+    <electromagnet_field
+        name="Iron_Steerer_Field"
+        system="world/IronSteerer"
+        surfaces="world/IronSteerer/@Magnetic_Steerer_tag"
+    >
+        <integrating_field_solver/>
+    </electromagnet_field>
 </kemfield>
 
 
 <kassiopeia>
     <!--Generators-->
+    <ksgen_generator_composite name="generator_grid" pid="11">
+        <energy_composite>
+            <energy_fix value="1."/>
+        </energy_composite>
+        <position_cylindrical_composite>
+	  		<r_fix value="0"/>
+          	<phi_fix value="0"/>
+          	<z_set value_start="-0.1" value_stop="0.1" value_count="21"/>
+        </position_cylindrical_composite>
+        <direction_spherical_composite>
+            <theta_uniform value_min="0" value_max="0"/>
+            <phi_uniform  value_min="0" value_max="0"/>
+        </direction_spherical_composite>
+        <time_composite>
+            <time_fix value="0"/>
+        </time_composite>
+    </ksgen_generator_composite>
 
     <!--Trajectories-->
     <kstraj_trajectory_exact name="trajectory_exact">
@@ -66,7 +111,8 @@
     <ksnav_surface name="nav_surface" transmission_split="false" reflection_split="false"/>
 
     <!--Terminators-->
-    <!--Make Later-->
+    <ksterm_max_steps name="term_max_steps" steps="[max_step]"/>
+    <ksterm_death name="term_world"/>
 
     <!--Writers-->
     <kswrite_root name="write_root" path="[output_path]" base="[file_name].root"/>
@@ -134,6 +180,7 @@
         <command parent="write_vtk" field="set_track_data" child="component_track_length"/>
         <command parent="write_vtk" field="set_step_point" child="component_step_position"/>
         <command parent="write_vtk" field="set_step_data" child="component_step_length"/>
+        <geo_surface name="IronSteerer" surfaces="world/IronSteerer/@Magnetic_Steerer_tag"/>
     </ksgeo_space>
 
     <!--Simulation-->
@@ -141,9 +188,9 @@
         run="1"
         seed="[seed_number]"
         events="[number_events]"
+        magnetic_field="Iron_Steerer_Field"
         space="space_world"
-        magnetic_field="total_magnetic_field"
-        generator="generator_uniform"
+        generator="generator_grid"
         trajectory="trajectory_exact"
         space_navigator="nav_space"
         surface_navigator="nav_surface"
@@ -151,68 +198,56 @@
         writer="write_root"
         writer="write_vtk"
     />
+</kassiopeia>
 
-    <!-- VTK window -->
-    <vtk_window
-        name="vtk_window"
-        enable_display="true"
-        enable_write="true"
-        frame_title="KGeoBag Visualization"
-        frame_size_x="1024"
-        frame_size_y="768"
-        frame_color_red=".2"
-        frame_color_green=".2"
-        frame_color_blue=".2"
-        view_angle="45"
-        eye_angle="0.5"
-        multi_samples="4"
-        depth_peeling="10"
-    >
+<!-- VTK window -->
+<vtk_window
+    name="vtk_window"
+    enable_display="true"
+    enable_write="true"
+    frame_title="KGeoBag Visualization"
+    frame_size_x="1024"
+    frame_size_y="768"
+    frame_color_red=".2"
+    frame_color_green=".2"
+    frame_color_blue=".2"
+    view_angle="45"
+    eye_angle="0.5"
+    multi_samples="4"
+    depth_peeling="10"
+>
     
 
-        <vtk_geometry_painter
-            name="geometry_painter"
-            file="IntegratedSArray_NewGeometry.vtp"
-            surfaces="world/IronSteerer/#"
-            spaces="world/IronSteerer/#"
-        />
+    <vtk_geometry_painter
+        name="geometry_painter"
+        file="IronSteerer_NewGeometry.vtp"
+        surfaces="world/IronSteerer/#"
+        spaces="world/IronSteerer/#"
+    />
 
-        <vtk_track_painter
-            name="track_painter"
-            path="[output_path]"
-            file="[file_name].root"
-            point_object="component_step_world"
-            point_variable="position"
-            color_object="component_step_world"
-            color_variable="polar_angle_to_b"
-        />
-        <vtk_track_terminator_painter
-            name="terminator_painter"
-            path="[output_path]"
-            file="[file_name].root"
-            point_object="component_track_world"
-            point_variable="final_position"
-            terminator_object="component_track_world"
-            terminator_variable="terminator_name"
-            add_terminator="term_electrode_target"
-            add_color="0 255 0"
-        />
+    <vtk_track_painter
+        name="track_painter"
+        path="[output_path]"
+        file="[file_name].root"
+        point_object="component_step_world"
+        point_variable="position"
+        color_object="component_step_world"
+        color_variable="polar_angle_to_b"
+    />
 
 
-        <vtk_axial_mesh_painter
-	        name="vtk_axial_mesh_painter"
-	        color_mode="area"
-        />
+    <vtk_axial_mesh_painter
+	    name="vtk_axial_mesh_painter"
+        surfaces="world/IronSteerer/#"
+        spaces="world/IronSteerer/#"
+	    color_mode="area"
+    />
 
 
-        <vtk_mesh_painter
-	        name="vtk_mesh_painter"
-	        surfaces="world/IronSteerer/#"
-            spaces="world/IronSteerer/#"
-	        color_mode="area"
-        />
-
-    </vtk_window>
-
-
-</kassiopeia>
+    <vtk_mesh_painter
+	    name="vtk_mesh_painter"
+	    surfaces="world/IronSteerer/#"
+        spaces="world/IronSteerer/#"
+	    color_mode="area"
+    />
+</vtk_window>
