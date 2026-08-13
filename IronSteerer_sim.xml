@@ -61,7 +61,7 @@
     </space>
 
     <!--Defining the Current-->
-    <electromagnet name="Magnetic_Steerer" surfaces="world/IronSteerer/Magnetic_Steerer" current="2573"/>
+    <electromagnet name="Magnetic_Steerer" surfaces="world/IronSteerer/Magnetic_Steerer" current="3958"/>
 </geometry>
 
 <kemfield>
